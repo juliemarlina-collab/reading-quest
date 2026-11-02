@@ -186,3 +186,11 @@ mark.rd-ev { background: #fde047; color: #111827; border-radius: .2rem; padding:
 /* Title art on the main menu */
 .cq-title-art { width: 100%; max-height: 11rem; object-fit: cover; object-position: 50% 30%; border-radius: 1.1rem;
   border: 2px solid rgba(251,191,36,.55); box-shadow: 0 8px 24px rgba(0,0,0,.35); }
+
+/* Phones: hide the floating name tag, smooth objective fade */
+.cq-compact #hero-screen-tag { display: none !important; }
+#hud-objective-wrap { transition: opacity .6s; }
+.cq-compact #hud-objective-wrap > div { padding: .3rem .8rem; font-size: .72rem; }
+.cq-compact #interaction-prompt { bottom: 10.5rem; }
+.cq-compact #interaction-prompt button { font-size: .8rem; padding: .45rem .9rem; }
+.cq-compact #game-toast { bottom: auto; top: 15.5rem; right: .75rem; left: .75rem; text-align: center; }
