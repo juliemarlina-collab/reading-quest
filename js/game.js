@@ -28,6 +28,10 @@
     { id: 'top', label: 'Cam: Top', dist: 7.5, height: 8.8, front: false }
   ];
 
+  // Phones / small tablets: fewer props, wider camera, short objective
+  const COMPACT = Math.min(window.innerWidth, window.innerHeight) < 600 || (('ontouchstart' in window) && window.innerWidth < 900);
+  if (COMPACT) document.documentElement.classList.add('cq-compact');
+
   const state = {
     selectedHeroId: 'aiden',
     currentWorldId: 1,
@@ -791,6 +795,7 @@
     swayers = [];
     lanterns = [];
     sphinx = null;
+    bookPages = [];
     flowingWaters = [];
     ambientParticles = [];
     trailParticles = [];
@@ -1445,7 +1450,7 @@
   // Scatter flowers, grass and rocks along the island edges
   function decorateIsland(worldDef, islandZ, w, d, topY) {
     const sc = WORLD_SCENERY[worldDef.id];
-    const n = 14;
+    const n = COMPACT ? 5 : 14;
     for (let k = 0; k < n; k++) {
       const sideSign = k % 2 === 0 ? -1 : 1;
       const x = sideSign * range(w / 2 - 1.4, w / 2 - 0.35);
@@ -1474,6 +1479,7 @@
     }
     updateSphinx(dt, elapsed);
     animateLanterns(elapsed);
+    animateBookPages(dt);
     for (const t of flowingWaters) {
       t.offset.y += dt * 1.4;
     }
@@ -1565,26 +1571,30 @@
     const y = 0.8;
     if (worldDef.id === 1) {
       // Lantern Library: bookshelves along both sides + lanterns
-      addBookshelf(-4.7, y, islandZ + 2.2, Math.PI / 2);
-      addBookshelf(-4.7, y, islandZ - 0.2, Math.PI / 2);
-      addBookshelf(4.7, y, islandZ + 2.6, -Math.PI / 2);
-      addLantern(-3.4, y, islandZ - 3.6, 2.6);
-      addLantern(3.2, y, islandZ - 3.4, 2.6);
-      placeModel('log_stack', 4.0, y, islandZ - 1.0, 2.2, 0.3);
+      addBookshelf(-4.9, y, islandZ - 0.4, Math.PI / 2);
+      addLantern(3.4, y, islandZ - 3.6, 2.6);
+      if (!COMPACT) {
+        addBookshelf(-4.7, y, islandZ + 2.2, Math.PI / 2);
+        addBookshelf(4.7, y, islandZ + 2.6, -Math.PI / 2);
+        addLantern(-3.4, y, islandZ - 3.6, 2.6);
+        placeModel('log_stack', 4.0, y, islandZ - 1.0, 2.2, 0.3);
+      }
     } else if (worldDef.id === 2) {
       // Ruins of Riddles: broken columns, blocks and floating riddle stones
-      [[-4.6, 2.8], [-4.4, -1.6], [4.5, 3.0], [4.7, -2.2]].forEach(([x, dz], k) => {
+      (COMPACT ? [[-4.8, -1.6], [4.8, -2.2]] : [[-4.6, 2.8], [-4.4, -1.6], [4.5, 3.0], [4.7, -2.2]]).forEach(([x, dz], k) => {
         placeModel(k % 2 ? 'statue_column' : 'statue_columnDamaged', x, y, islandZ + dz, 3.6, 0);
       });
-      placeModel('statue_block', -3.4, y, islandZ + 4.3, 1.6, 0.4);
-      placeModel('statue_block', 3.6, y, islandZ - 4.0, 1.4, 1.1);
       riddleStone(-4.5, y + 3.9, islandZ - 1.6);
-      riddleStone(4.5, y + 4.1, islandZ + 3.0);
+      if (!COMPACT) {
+        placeModel('statue_block', -3.4, y, islandZ + 4.3, 1.6, 0.4);
+        placeModel('statue_block', 3.6, y, islandZ - 4.0, 1.4, 1.1);
+        riddleStone(4.5, y + 4.1, islandZ + 3.0);
+      }
     } else {
       // Sky Garden: a ring of columns around each island
-      const n = 10;
+      const n = COMPACT ? 6 : 10;
       for (let k = 0; k < n; k++) {
-        const a = (k / n) * Math.PI * 2;
+        const a = (k / n) * Math.PI * 2 + 0.3;
         const x = Math.cos(a) * 4.75;
         const z = islandZ + Math.sin(a) * 5.4;
         if (Math.abs(x) < 2.6) continue; // keep the path and bridges open
@@ -1646,7 +1656,7 @@
   function addSphinx(islandZ) {
     if (!ART_OK || !artTex.sphinx_idle) return;
     const sp = makeSprite('sphinx_idle', SPHINX_H, 0.5);
-    const baseX = 6.4, baseY = 2.6, z = islandZ + 0.6;
+    const baseX = COMPACT ? 5.2 : 6.4, baseY = 2.6, z = islandZ + 0.6;
     sp.position.set(baseX, baseY, z);
     worldGroup.add(sp);
 
@@ -1765,6 +1775,117 @@
     setTimeout(() => showToast('🦁💜 You answered the Sphinx’s riddle! It smiles and flies away.'), 1200);
   }
 
+  // -------------------------------------------------------------------
+  // BOOK BRIDGES
+  // Each bridge is a giant open book made of one "page" per question.
+  // A page flips down into place every time a question is answered,
+  // so students can see the bridge growing. It can be walked on only
+  // when the whole book is open (all questions answered).
+  // -------------------------------------------------------------------
+  let bookPages = [];
+  const BOOK_COVERS = { 1: 0x7c2d12, 2: 0x0e7490, 3: 0x7e22ce };
+  let pageTex = null;
+
+  function makePageTexture() {
+    if (pageTex) return pageTex;
+    const c = document.createElement('canvas');
+    c.width = 512; c.height = 256;
+    const g = c.getContext('2d');
+    g.fillStyle = '#fbf3dc'; g.fillRect(0, 0, 512, 256);
+    // gutter shadow in the middle (the spine runs along the bridge)
+    const gr = g.createLinearGradient(226, 0, 286, 0);
+    gr.addColorStop(0, 'rgba(120,90,40,0)'); gr.addColorStop(0.5, 'rgba(120,90,40,.45)'); gr.addColorStop(1, 'rgba(120,90,40,0)');
+    g.fillStyle = gr; g.fillRect(226, 0, 60, 256);
+    // lines of "text" on both pages
+    g.fillStyle = 'rgba(60,40,80,.85)';
+    let seed = 11;
+    const r = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+    for (const x0 of [30, 296]) {
+      for (let y = 26; y < 236; y += 19) {
+        let x = x0;
+        while (x < x0 + 180) {
+          const w = 14 + r() * 34;
+          g.fillRect(x, y, Math.min(w, x0 + 186 - x), 8);
+          x += w + 7;
+        }
+      }
+    }
+    pageTex = new THREE.CanvasTexture(c);
+    pageTex.anisotropy = 4;
+    return pageTex;
+  }
+
+  function makeBookBridge(plat, nPages) {
+    // hide the plank look, keep the platform for collisions
+    plat.mesh.children.forEach(ch => { ch.visible = false; });
+    const cover = new THREE.MeshStandardMaterial({ color: BOOK_COVERS[buildingWorldId] || 0x7c2d12, roughness: 0.6 });
+    const gold = new THREE.MeshStandardMaterial({ color: 0xf2c94c, roughness: 0.35, metalness: 0.2 });
+    const paper = new THREE.MeshStandardMaterial({ map: makePageTexture(), color: 0xcfc3a3, roughness: 0.95 });
+    const edge = new THREE.MeshStandardMaterial({ color: 0xc9b98f, roughness: 0.9 });
+    const segD = plat.d / nPages;
+    const pages = [];
+    for (let k = 0; k < nPages; k++) {
+      const pivot = new THREE.Group();
+      // pivot on the island side (+z) edge of this page, pages run towards -z
+      pivot.position.set(0, plat.h * 0.12, plat.d / 2 - k * segD);
+      const coverMesh = new THREE.Mesh(new THREE.BoxGeometry(plat.w + 0.7, 0.2, segD), cover);
+      coverMesh.position.set(0, -0.08, -segD / 2);
+      const block = new THREE.Mesh(new THREE.BoxGeometry(plat.w, 0.24, segD - 0.04), [edge, edge, paper, edge, edge, edge]);
+      block.position.set(0, 0.08, -segD / 2);
+      const trim = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.1, segD), gold);
+      trim.position.set(0, 0.22, -segD / 2);
+      pivot.add(coverMesh, block, trim);
+      pivot.rotation.x = -Math.PI / 2; // standing up, waiting to flip down
+      pivot.visible = false;
+      plat.mesh.add(pivot);
+      const pg = { obj: pivot, t: 0, open: false };
+      pages.push(pg);
+      bookPages.push(pg);
+    }
+    plat.book = pages;
+  }
+
+  function makeFloatingBook(plat) {
+    plat.mesh.children.forEach(ch => { ch.visible = false; });
+    const cover = new THREE.MeshStandardMaterial({ color: BOOK_COVERS[buildingWorldId] || 0x7c2d12, roughness: 0.6 });
+    const edge = new THREE.MeshStandardMaterial({ color: 0xf1e3bd, roughness: 0.9 });
+    const gold = new THREE.MeshStandardMaterial({ color: 0xf2c94c, roughness: 0.35, metalness: 0.2 });
+    const body = new THREE.Mesh(new THREE.BoxGeometry(plat.w * 0.96, plat.h * 0.5, plat.d * 0.92), [edge, cover, cover, cover, edge, edge]);
+    body.position.y = plat.h * 0.12;
+    const top = new THREE.Mesh(new THREE.BoxGeometry(plat.w, 0.1, plat.d), cover);
+    top.position.y = plat.h * 0.42;
+    const bottom = top.clone();
+    bottom.position.y = -plat.h * 0.18;
+    const star = new THREE.Mesh(new THREE.OctahedronGeometry(0.42, 0), gold);
+    star.scale.set(1, 0.18, 1);
+    star.position.y = plat.h * 0.48;
+    plat.mesh.add(body, top, bottom, star);
+  }
+
+  // Show pages 1..count of a crystal's bridge (flip animation)
+  function openBridgePages(crystalObj, count) {
+    const plat = crystalObj && crystalObj.bridgePlat;
+    if (!plat || !plat.book) return;
+    plat.mesh.visible = true;
+    plat.book.forEach((pg, k) => {
+      if (k < count && !pg.open) {
+        pg.open = true;
+        pg.obj.visible = true;
+        pg.t = -k * 0.12; // small stagger when several open together
+      }
+    });
+  }
+
+  function animateBookPages(dt) {
+    for (const pg of bookPages) {
+      if (!pg.open || pg.t >= 1) continue;
+      pg.t = Math.min(1, pg.t + dt * 1.8);
+      const e = Math.max(0, pg.t);
+      const ease = 1 - Math.pow(1 - e, 3);
+      pg.obj.rotation.x = -Math.PI / 2 * (1 - ease) + Math.sin(ease * Math.PI) * 0.08;
+    }
+  }
+
   let buildingWorldId = 1;
   function buildWorld(worldId) {
     clearWorld();
@@ -1834,7 +1955,7 @@
 
       // Checkpoint at start of each island
       addCheckpoint(0, 0.8, islandZ + 3.5);
-      addProp('item_signpost', 3.4, 0.8, islandZ + 4.4, 1.3);
+      if (!COMPACT) addProp('item_signpost', 3.4, 0.8, islandZ + 4.4, 1.3);
 
       // Crystal Coins along the island
       for (let c = 0; c < coinsPerSegment && coinsPlaced < worldDef.totalCoins; c++) {
@@ -1920,6 +2041,7 @@
       bridgePlat.active = false;
       bridgePlat.mesh.visible = false;
       makePlanks(bridgePlat);
+      makeBookBridge(bridgePlat, ch.questions.length);
 
       const movePlatZ = islandZ - 13.4;
       const moveSpec = {
@@ -1932,6 +2054,7 @@
       const movePlat = addPlatform(0, 0.2, movePlatZ, 4.4, 0.8, 4.4, worldDef.platformColor, true, moveSpec);
       movePlat.active = false;
       movePlat.mesh.visible = false;
+      makeFloatingBook(movePlat);
 
       listeningCrystals.push({
         id: ch.id,
@@ -2401,6 +2524,8 @@
   }
 
   function finishQuestion(isLast) {
+    const fc = state.activeCrystalObj;
+    if (fc && !fc.solved) openBridgePages(fc, fc.qIndex + 1);
     document.querySelectorAll('#rd-choices button').forEach(b => { b.disabled = true; });
     const contBtn = rdEl('rd-continue');
     contBtn.textContent = isLast
@@ -2474,6 +2599,7 @@
 
   function completeCrystal(crystalObj) {
     crystalObj.solved = true;
+    openBridgePages(crystalObj, crystalObj.challenge.questions.length);
     state.challengesSolved++;
     for (const p of [crystalObj.bridgePlat, crystalObj.movePlat]) {
       if (p) { p.active = true; p.mesh.visible = true; }
@@ -2497,7 +2623,7 @@
       portalObject.vortex.material.opacity = 0.95;
       showToast('🌀 All books restored! The portal is open.');
     } else {
-      showToast('🌉 Bridge unlocked! Head to the next book.');
+      showToast('📖 The book bridge is open! Head to the next book.');
     }
     updateHUD();
     saveProgress();
@@ -2817,11 +2943,23 @@
     document.getElementById('hud-score').textContent = state.levelScore.toLocaleString();
 
     const objText = document.getElementById('hud-objective-text');
-    if (state.challengesSolved < worldDef.challenges.length) {
-      objText.textContent = `Read Book ${state.challengesSolved + 1} of ${worldDef.challenges.length} with the Owl Librarian (Press E) to unlock the bridge!`;
+    const nB = worldDef.challenges.length;
+    let msg;
+    if (state.challengesSolved < nB) {
+      msg = COMPACT
+        ? `Book ${state.challengesSolved + 1}/${nB}: walk to the owl, tap 📖 READ`
+        : `Read Book ${state.challengesSolved + 1} of ${nB} with the Owl Librarian (Press E) to unlock the bridge!`;
     } else {
-      objText.textContent = `All ${worldDef.challenges.length} books restored! Step into the glowing Portal ahead!`;
+      msg = COMPACT ? 'All books glowing! Run to the portal 🌀' : `All ${nB} books restored! Step into the glowing Portal ahead!`;
     }
+    const wrapEl = document.getElementById('hud-objective-wrap');
+    if (objText.textContent !== msg) {
+      objText.textContent = msg;
+      wrapEl.style.opacity = '1';
+      clearTimeout(wrapEl._fade);
+      if (COMPACT) wrapEl._fade = setTimeout(() => { wrapEl.style.opacity = '0'; }, 7000);
+    }
+    requestAnimationFrame(placeObjective);
   }
 
   let lastToastMsg = '';
@@ -3408,11 +3546,23 @@
     updateHUD();
   }
 
-  window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
+  function fitCamera() {
+    const a = window.innerWidth / window.innerHeight;
+    camera.aspect = a;
+    camera.fov = a < 1 ? Math.min(74, 52 + (1 - a) * 42) : 52;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
-  });
+    placeObjective();
+  }
+  function placeObjective() {
+    const bar = document.getElementById('hud-bar');
+    const wrap = document.getElementById('hud-objective-wrap');
+    if (!bar || !wrap || bar.classList.contains('hidden')) return;
+    wrap.style.top = Math.round(bar.getBoundingClientRect().bottom + 6) + 'px';
+  }
+  window.addEventListener('resize', fitCamera);
+  setTimeout(fitCamera, 0);
+  setInterval(placeObjective, 800);
 
   // Student details & practice mode
   function loadProfile() {
