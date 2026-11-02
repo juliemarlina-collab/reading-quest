@@ -1062,7 +1062,7 @@
   const HERO_POSES = ['idle', 'run', 'jump', 'fall', 'listen', 'answer', 'celebrate', 'back', 'damage'];
   const ART_FILES = [];
   ['aiden', 'luna', 'rex', 'mia'].forEach(h => HERO_POSES.forEach(p => {
-    if (p === 'damage' && (h === 'luna' || h === 'mia')) return; // no damage pose on these sheets
+    if (p === 'damage' && h === 'mia') return; // no damage pose on this sheet
     ART_FILES.push(h + '_' + p);
   }));
   ['enemy_bookworm', 'bookworm_move', 'bookworm_hit',
@@ -3005,7 +3005,7 @@
       document.getElementById('level-splash-img').src = ART_BASE + 'card_w' + worldId + '.webp';
       document.getElementById('level-splash-title').textContent = 'Level ' + (wd.level || worldId) + ': ' + wd.name;
       document.getElementById('level-splash-sub').textContent = wd.objectiveDesc;
-      document.getElementById('level-splash-textbox').classList.toggle('cq-no-title', worldId === 3); // Level 9 card has its own title
+      document.getElementById('level-splash-textbox').classList.add('cq-no-title'); // the level cards have their own titles
       sp.classList.remove('hidden');
       requestAnimationFrame(() => { sp.style.opacity = '1'; });
       clearTimeout(sp._t1); clearTimeout(sp._t2);

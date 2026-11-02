@@ -8,7 +8,7 @@ with **Ora the Owl Librarian** and answer MUET-style questions to make each book
 | Level | Land | Books (MUET Reading part) |
 |---|---|---|
 | 7 | Lantern Library (bookshelves, lanterns) | Part 1 matching (3 notices) · Part 2 short article (3 options) · Part 3 article (3 options) |
-| 8 | Ruins of Riddles (broken columns, riddle stones) | Part 4 compare two writers · Part 5 gapped text · Part 5 gapped text |
+| 8 | Moonlit Observatory (broken columns, riddle stones) | Part 4 compare two writers · Part 5 gapped text · Part 5 gapped text |
 | 9 | Sky Garden (columns, flowers, the Crystal Sphinx) | Part 6 long article (4 options) · Part 7 long article (4 options) · Final book: the Sphinx's riddle |
 
 49 questions in total. The parts are *simplified* (shorter texts, fewer questions)

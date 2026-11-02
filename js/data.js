@@ -363,7 +363,7 @@ window.CQ_DATA = (function () {
     {
       id: 2,
       level: 8,
-      name: 'Ruins of Riddles',
+      name: 'Moonlit Observatory',
       subtitle: 'Level 8 • MUET Reading Parts 4–5 • Compare texts & gapped texts',
       thumb: 'art/card_w2.webp',
       objectiveDesc: 'Compare two writers’ views, then put the missing sentences back into two texts.',
