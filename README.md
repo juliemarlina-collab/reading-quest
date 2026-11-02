@@ -20,6 +20,10 @@ Wait, then run past. Touching the beam costs a heart and returns the hero to the
 checkpoint. It never reacts to reading mistakes; while a student reads, it sits and
 thinks. Finishing the final book calms it and it flies away.
 
+**Book bridges:** each bridge is a giant open book with one page per question. A page flips into place every time a question is answered, so students watch the bridge grow; it can be walked on once the whole book is open. The moving platforms are floating closed books.
+
+**On phones** the game uses fewer props, a wider camera and a short instruction line under the header (it fades after a few seconds).
+
 **Bookworms** crawl back and forth on each island; bumping into one costs a heart.
 **Golden scrolls** are the collectibles (+10 points each).
 
